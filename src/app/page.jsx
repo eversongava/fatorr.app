@@ -350,10 +350,15 @@ function FAQSection() {
       </div>
 
       <div className="mt-16 p-8 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center">
-        <p className="text-emerald-800 font-bold mb-4">Ainda tem dúvidas?</p>
-        <button className="text-emerald-600 font-black uppercase text-xs tracking-widest hover:text-emerald-700 transition-colors flex items-center gap-2 mx-auto">
+        <p className="text-emerald-800 font-bold mb-4">Ainda tem dúvidas cruciais sobre a contabilidade da sua PJ?</p>
+        <a 
+          href="https://wa.me/55DDNNNNNNNNN?text=Olá,%20acessei%20o%20Fatorr.app%20e%20gostaria%20de%20falar%20com%20um%20especialista%20sobre%20a%20redução%20para%206%25." 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase text-xs tracking-widest transition-all inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full shadow-lg hover:-translate-y-1 mx-auto"
+        >
           Falar com um especialista no WhatsApp
-        </button>
+        </a>
       </div>
     </section>
   );
