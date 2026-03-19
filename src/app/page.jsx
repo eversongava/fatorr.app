@@ -108,29 +108,21 @@ export default function App() {
       <header className="px-6 pt-32 pb-20 max-w-7xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest mb-10">
           <Sparkles size={14} />
-          <span>Inteligência Fiscal Para Prestadores no Simples Nacional</span>
+          <span>FEITO PARA O SIMPLES NACIONAL (ANEXO V)</span>
         </div>
-        <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-slate-900">
-          Pague <span className="text-emerald-500">6%</span> <br />
-          e não <span className="text-slate-300">15,5%.</span>
+        <h1 className="text-6xl md:text-7xl font-black tracking-tighter mb-8 leading-[1.0] text-slate-900">
+          Pare de rasgar dinheiro pagando <span className="text-red-500 line-through decoration-red-200">15,5%</span> de imposto todo mês.
         </h1>
         <p className="text-slate-500 text-xl md:text-2xl max-w-3xl mx-auto mb-12 font-medium leading-relaxed">
-          O SaaS que monitora seu faturamento e folha otimizando seu Fator R e permitindo acesso ao benefício fiscal do <span className="text-slate-900 font-bold underline decoration-emerald-500/30">Anexo III do Simples</span>.
-          Sem complexidade, sem sustos no fim do mês.
+          Descubra como PJs de serviços estão reduzindo a carga tributária para apenas <span className="text-emerald-500 font-bold">6%</span> garantindo o benefício legal do Fator R. Sem burocracia, sem surpresas no fim do mês.
         </p>
         <div className="flex flex-col items-center gap-6">
-          <button
-            onClick={handleCheckout}
-            disabled={checkoutLoading}
-            className="group bg-emerald-500 hover:bg-emerald-400 text-white font-black px-10 py-5 rounded-2xl text-xl flex items-center gap-3 transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 cursor-pointer disabled:opacity-70 disabled:hover:-translate-y-0"
+          <a
+            href="#simulador"
+            className="group bg-emerald-500 hover:bg-emerald-400 text-white font-black px-10 py-5 rounded-2xl text-xl flex items-center gap-3 transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 cursor-pointer"
           >
-            {checkoutLoading ? (
-              <><Loader2 className="animate-spin" /> Carregando...</>
-            ) : (
-              <>Começar Trial de 30 Dias <ArrowRight className="group-hover:translate-x-1 transition-transform" /></>
-            )}
-          </button>
-          <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">+2.400 profissionais economizando agora</p>
+            Simular Minha Economia <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          </a>
         </div>
       </header>
 
