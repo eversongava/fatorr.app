@@ -152,7 +152,7 @@ export default function App() {
                   <span className="text-slate-900 font-black">R$ {revenue.toLocaleString()}</span>
                 </div>
                 <input
-                  type="range" min="5000" max="40000" step="500" value={revenue}
+                  type="range" min="5000" max="50000" step="500" value={revenue}
                   onChange={(e) => setRevenue(Number(e.target.value))}
                   className="w-full h-3 bg-white rounded-full appearance-none cursor-pointer accent-emerald-500"
                 />
