@@ -12,6 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { Toaster } from 'sonner';
+
 export const metadata: Metadata = {
   title: "Fatorr | Otimização Fiscal para Prestadores",
   description: "SaaS exclusivo de cálculo e manutenção do Fator R (Anexo III) para o Simples Nacional. Economize em impostos pagando apenas 6%.",
@@ -28,6 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

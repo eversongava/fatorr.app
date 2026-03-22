@@ -11,14 +11,18 @@ import {
     Calculator,
     Loader2,
     AlertCircle,
-    Info
+    Info,
+    CreditCard,
+    Lock
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function CockpitPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [isNewCompany, setIsNewCompany] = useState(false);
+    const [subStatus, setSubStatus] = useState('active'); // fallback otimista até o fetch
     const [history, setHistory] = useState([]);
     const [projectedRevenue, setProjectedRevenue] = useState('');
     const [results, setResults] = useState({
@@ -29,6 +33,7 @@ export default function CockpitPage() {
         wasProportionalCalculated: false
     });
     const [copied, setCopied] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -43,12 +48,15 @@ export default function CockpitPage() {
 
             const { data: profileData } = await supabase
                 .from('profiles')
-                .select('is_new_company')
+                .select('is_new_company, stripe_subscription_status')
                 .eq('id', user.id)
                 .single();
 
             const newCompanyFlag = profileData?.is_new_company || false;
             setIsNewCompany(newCompanyFlag);
+            
+            // Assume active if null (for early beta testers) or strictly check
+            setSubStatus(profileData?.stripe_subscription_status || 'active');
 
             const { data: fiscalData, error: dbError } = await supabase
                 .from('fiscal_data')
@@ -92,25 +100,69 @@ export default function CockpitPage() {
     const handleCopy = async () => {
         const text = `Olá! Solicito que o meu Pró-labore seja emitido no mês corrente no valor exato de R$ ${results.requiredProLabore.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, para manter o enquadramento no Anexo III do Simples Nacional com a margem de segurança de 29% (1% de tolerância). Att, ${user?.email}`;
 
-        navigator.clipboard.writeText(text).then(async () => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 3000);
+        // Toast.promise para simular feedback visual de processamento enquanto salvamos tudo no banco
+        toast.promise(
+            navigator.clipboard.writeText(text).then(async () => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 3000);
 
-            if (history.length > 0 && user) {
-                const currentMonth = history[0];
-                await supabase
-                    .from('fiscal_data')
-                    .update({ instruction_copied_at: new Date().toISOString() })
-                    .eq('user_id', user.id)
-                    .eq('month_year', currentMonth.month_year);
+                if (history.length > 0 && user) {
+                    const currentMonth = history[0];
+                    await supabase
+                        .from('fiscal_data')
+                        .update({ 
+                            instruction_copied_at: new Date().toISOString(),
+                            revenue_rbt: Number(projectedRevenue) || 0,
+                            payroll_fs: results.requiredProLabore
+                        })
+                        .eq('user_id', user.id)
+                        .eq('month_year', currentMonth.month_year);
+                }
+            }),
+            {
+                loading: 'Calculando faturamento e preparando instrução...',
+                success: 'Pronto! A instrução foi copiada. Agora é só colar para o seu contador.',
+                error: 'Erro ao copiar a mensagem.',
             }
-        });
+        );
     };
 
     if (loading) {
         return (
             <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
                 <Loader2 className="animate-spin text-emerald-500 w-12 h-12" />
+            </div>
+        );
+    }
+    
+    // Função para chamar o Portal do Cliente
+    const handleCustomerPortal = async () => {
+        toast.loading('Abrindo portal seguro do Stripe...', { id: 'portal' });
+        try {
+            const res = await fetch('/api/portal', { method: 'POST' });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            window.location.href = data.url;
+        } catch (e) {
+            toast.error('Erro ao acessar o portal financeiro.', { id: 'portal' });
+        }
+    };
+
+    if (subStatus === 'past_due' || subStatus === 'canceled' || subStatus === 'unpaid') {
+        return (
+            <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-24 h-24 bg-red-100 rounded-[32px] flex items-center justify-center mb-8 rotate-3 shadow-xl shadow-red-500/10">
+                    <Lock className="text-red-500 w-12 h-12" />
+                </div>
+                <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Acesso Bloqueado</h2>
+                <p className="text-slate-500 mb-8 max-w-md leading-relaxed font-medium">
+                    Sua assinatura FatorR encontra-se inativa ou com o pagamento pendente. Regularize seu plano para recuperar o acesso instantâneo ao seu cockpit tributário.
+                </p>
+                <button
+                    onClick={handleCustomerPortal}
+                    className="bg-slate-900 text-white font-black px-8 py-5 rounded-2xl flex items-center gap-3 hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+                    <CreditCard size={20} /> Regularizar Assinatura
+                </button>
             </div>
         );
     }
@@ -144,12 +196,18 @@ export default function CockpitPage() {
                     </div>
                     <div className="flex items-center gap-4">
                         <button
+                            onClick={handleCustomerPortal}
+                            className="bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 font-bold px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors shadow-sm"
+                        >
+                            <CreditCard size={16} /> Assinatura
+                        </button>
+                        <button
                             onClick={() => router.push('/onboarding')}
-                            className="text-sm font-bold text-slate-500 hover:text-emerald-600 bg-white hover:bg-slate-50 px-4 py-2 rounded-full shadow-sm border border-slate-200 transition-colors"
+                            className="text-sm font-bold text-slate-500 hover:text-emerald-600 bg-white hover:bg-emerald-50 px-4 py-2 rounded-full shadow-sm border border-slate-200 transition-colors hidden sm:block"
                         >
                             Editar Histórico
                         </button>
-                        <div className="text-sm font-bold text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 hidden sm:block">
+                        <div className="text-sm font-bold text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 hidden md:block">
                             {user?.email}
                         </div>
                     </div>
@@ -289,7 +347,9 @@ export default function CockpitPage() {
                                     className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black py-4 rounded-xl text-md flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                                 >
                                     {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
-                                    {copied ? 'Mensagem Copiada!' : 'Copiar para Área de Transferência'}
+                                    <span className="uppercase tracking-wide">
+                                        {copied ? 'Mensagem Copiada!' : 'Fechar mês e gerar instrução para contador'}
+                                    </span>
                                 </button>
                             </div>
 
@@ -297,6 +357,29 @@ export default function CockpitPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal de Sucesso */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-[40px] p-10 max-w-md w-full text-center shadow-2xl transform transition-all">
+                        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <CheckCircle2 size={40} />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Mês Fechado! 🎉</h3>
+                        <p className="text-slate-600 text-sm mb-8 leading-relaxed font-medium">
+                            Sua instrução foi gerada e os valores da simulação foram salvos automaticamente no seu histórico.<br/><br/>
+                            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full text-xs font-bold inline-block mt-2">Dica valiosa:</span><br/>
+                            <span className="text-slate-500 text-xs block mt-2">Você sempre pode editar seu histórico caso o valor real das suas notas mude até o fim do mês.</span>
+                        </p>
+                        <button 
+                            onClick={() => setShowSuccessModal(false)}
+                            className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                        >
+                            Entendi, fechar
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

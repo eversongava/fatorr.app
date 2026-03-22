@@ -15,6 +15,9 @@ const supabase = createClient(DB_URL, DB_SERVICE_ROLE_KEY);
 
 // Função auxiliar genérica para disparar pela Z-API
 async function sendWhatsAppMessage(phone: string, text: string) {
+    const ZAPI_INSTANCE_URL = Deno.env.get('ZAPI_INSTANCE_URL') || '';
+    const ZAPI_CLIENT_ID = Deno.env.get('ZAPI_CLIENT_ID') || '';
+
     if (!ZAPI_INSTANCE_URL || !ZAPI_CLIENT_ID) {
         console.error("Z-API credenciais ausentes.");
         return false;
@@ -24,8 +27,15 @@ async function sendWhatsAppMessage(phone: string, text: string) {
     let formattedPhone = phone.replace(/\D/g, '');
     if (formattedPhone.length === 11 || formattedPhone.length === 10) formattedPhone = '55' + formattedPhone;
 
+    let baseUrl = ZAPI_INSTANCE_URL.trim();
+    if (baseUrl.endsWith('/send-text')) baseUrl = baseUrl.replace('/send-text', '');
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    
+    const targetUrl = `${baseUrl}/send-text`;
+    console.log(`[Z-API Debug] Fetching: ${targetUrl}`);
+
     try {
-        const response = await fetch(`${ZAPI_INSTANCE_URL}/send-text`, {
+        const response = await fetch(targetUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -36,6 +46,9 @@ async function sendWhatsAppMessage(phone: string, text: string) {
                 message: text
             })
         });
+
+        const respText = await response.text();
+        console.log(`[Z-API Response for ${formattedPhone}]: ${response.status} - ${respText}`);
 
         return response.ok;
     } catch (e) {
@@ -131,7 +144,7 @@ serve(async (req: any) => {
         const { data: users, error: usersError } = await supabase
             .from('profiles')
             .select('id, full_name, whatsapp, is_new_company')
-            .eq('subscription_status', 'active')
+            .in('subscription_status', ['active', 'trial'])
             .not('whatsapp', 'is', null);
 
         if (usersError) throw usersError;
@@ -149,7 +162,7 @@ serve(async (req: any) => {
                 const msg = `Bem-vindo ao Fatorr.app, *${u.full_name}*! Conte com nossa tecnologia para economizar em impostos o ano todo! Obrigado`;
                 const success = await sendWhatsAppMessage(u.whatsapp, msg);
                 if (success) {
-                    await logNotification(u.id, 'welcome', null);
+                    await logNotification(u.id, 'welcome', currentMonthYearStr);
                     sentCount++;
                 }
                 // Se mandou welcome hoje, pode pular as demais notificações do dia para evitar spam
@@ -169,21 +182,19 @@ serve(async (req: any) => {
 
             const currentMonthData = fiscalDataList[0];
             const isCurrentMonth = currentMonthData.month_year === currentMonthYearStr;
-            const isPrediction = isCurrentMonth ? currentMonthData.is_prediction : false;
-
-            // Se não for o mês atual no topo, algo está errado (usuário não acessou e gerou o mês ainda)
-            if (!isCurrentMonth) continue;
+            const isPrediction = isCurrentMonth ? currentMonthData.is_prediction : true;
+            const instructionCopiedAt = isCurrentMonth ? currentMonthData.instruction_copied_at : null;
 
             const isNewCompany = u.is_new_company === true;
             const metrics = calculateMetricsForNotifications(fiscalDataList, isNewCompany);
 
             // Lógica: "Dia 20" - Lembrete (Planejamento Precoce)
-            if (dayOfMonth === 20 && isPrediction === true) {
+            if (dayOfMonth === 20 && isPrediction === true && instructionCopiedAt === null) {
                 const type = 'day_20';
                 const { count } = await supabase.from('notification_logs').select('*', { count: 'exact' }).eq('user_id', u.id).eq('notification_type', type).eq('month_year', currentMonthYearStr);
 
                 if (count === 0) {
-                    const msg = `Olá, *${u.full_name}*! 🚀 Já calculou a sua economia deste mês? Informe a sua previsão de faturamento no Cockpit para garantirmos o imposto de 6% (Anexo III) em vez de 15,5%.`;
+                    const msg = `Olá, *${u.full_name}*! 🚀 Já calculou a sua economia deste mês? Informe a sua previsão de faturamento no Cockpit Fatorr para garantirmos o imposto menor (Anexo III) em vez dos cruéis 15,5%.`;
                     const success = await sendWhatsAppMessage(u.whatsapp, msg);
                     if (success) {
                         await logNotification(u.id, type, currentMonthYearStr);
@@ -193,17 +204,40 @@ serve(async (req: any) => {
             }
 
             // Lógica: "Dia 25" - Urgência (Alerta de Urgência)
-            if (dayOfMonth === 25 && isPrediction === true) {
+            if (dayOfMonth === 25 && isPrediction === true && instructionCopiedAt === null) {
                 const type = 'day_25';
                 const { count } = await supabase.from('notification_logs').select('*', { count: 'exact' }).eq('user_id', u.id).eq('notification_type', type).eq('month_year', currentMonthYearStr);
 
-                if (count === 0 && metrics) {
-                    let msg = `Olá ${u.full_name}! Faltam 24h para definir seu Pró-labore. Sua economia estimada este mês é de R$ ${metrics.valorEconomia}. Garanta seu imposto de 6% acessando o Cockpit.`;
-
-                    if (metrics.wasProportionalCalculated) {
-                        msg += ` (O cálculo seguiu a média dos meses ativos da sua empresa nova).`;
+                if (count === 0) {
+                    let msg = '';
+                    if (!isCurrentMonth || Number(currentMonthData.revenue_rbt || 0) === 0) {
+                        msg = `Olá ${u.full_name}! Faltam 24h para definir seu Pró-labore. Vimos que você ainda não simulou sua previsão no aplicativo! Acesse o Cockpit URGENTE para o seu contador não enviar impostos no Anexo V (15,5%).`;
+                    } else if (metrics) {
+                        msg = `Olá ${u.full_name}! Faltam 24h para definir seu Pró-labore. Sua economia estimada este mês é de R$ ${metrics.valorEconomia}. Garanta seu imposto de 6% gerando a instrução no Cockpit.`;
+                        if (metrics.wasProportionalCalculated) {
+                            msg += ` (O cálculo seguiu a média dos meses ativos da sua empresa nova).`;
+                        }
                     }
 
+                    if (msg !== '') {
+                        const success = await sendWhatsAppMessage(u.whatsapp, msg);
+                        if (success) {
+                            await logNotification(u.id, type, currentMonthYearStr);
+                            sentCount++;
+                        }
+                    }
+                }
+            }
+
+            // Lógica: "Dia 26" - Reforço de Confiança (Após Copiar para Contador)
+            if (dayOfMonth === 26 && instructionCopiedAt !== null) {
+                const type = 'copy_accountant';
+                const { count } = await supabase.from('notification_logs').select('*', { count: 'exact' }).eq('user_id', u.id).eq('notification_type', type).eq('month_year', currentMonthYearStr);
+
+                if (count === 0 && metrics) {
+                    let msg = `Tudo pronto! Sua instrução de Pró-Labore R$ ${metrics.valor} foi despachada para o contador. Com este valor, você está seguro mesmo que seu faturamento ultrapasse a previsão em mais R$ ${metrics.fatMax}. Boa economia! ✅`;
+                    msg += `\n\n📌 *Dica:* Confirme sempre no fechamento do mês se as Notas Fiscais reais bateram com as suas previsões. Se o valor mudar, atualize o Histórico Fatorr para manter seu simulador hiper preciso!`;
+                    
                     const success = await sendWhatsAppMessage(u.whatsapp, msg);
                     if (success) {
                         await logNotification(u.id, type, currentMonthYearStr);
@@ -212,13 +246,40 @@ serve(async (req: any) => {
                 }
             }
 
-            // Lógica: "Dia 26" - Reforço de Confiança (Após Copiar para Contador)
-            if (dayOfMonth === 26 && currentMonthData.instruction_copied_at !== null) {
-                const type = 'copy_accountant';
+            // Lógica: "Dia 26" - Alerta Máximo (Para quem AINDA NÃO Copiou para o Contador)
+            if (dayOfMonth === 26 && isPrediction === true && instructionCopiedAt === null) {
+                const type = 'day_26_urgent';
                 const { count } = await supabase.from('notification_logs').select('*', { count: 'exact' }).eq('user_id', u.id).eq('notification_type', type).eq('month_year', currentMonthYearStr);
 
-                if (count === 0 && metrics) {
-                    const msg = `Tudo pronto! Sua instrução de Pró- Labore R$ ${metrics.valor} foi copiada. Com este valor, você está seguro mesmo que seu faturamento aumente mais R$ ${metrics.fatMax}. Boa economia! ✅`;
+                if (count === 0) {
+                    let msg = '';
+                    if (!isCurrentMonth || Number(currentMonthData.revenue_rbt || 0) === 0) {
+                        msg = `ALERTA MÁXIMO, *${u.full_name}*! 🚨 Hoje é o prazo final para definir seu Pró-labore. Vimos que você ainda não simulou sua previsão no aplicativo! Acesse o Cockpit Fatorr AGORA para o seu contador não enviar impostos no Anexo V (15,5%).`;
+                    } else if (metrics) {
+                        msg = `ALERTA MÁXIMO, *${u.full_name}*! 🚨 Hoje é o prazo final para instruir seu contador. Sua economia estimada este mês é de R$ ${metrics.valorEconomia}. Acesse o Cockpit AGORA e gere a instrução para garantir o imposto de 6%!`;
+                    }
+
+                    if (msg !== '') {
+                        const success = await sendWhatsAppMessage(u.whatsapp, msg);
+                        if (success) {
+                            await logNotification(u.id, type, currentMonthYearStr);
+                            sentCount++;
+                        }
+                    }
+                }
+            }
+
+            // Lógica: "Final do Mês" - Celebração e Indicação (Dia 30, ou últimos dias de Fev)
+            const isEndOfMonth = dayOfMonth === 30 || (today.getMonth() === 1 && (dayOfMonth === 28 || dayOfMonth === 29));
+            if (isEndOfMonth && instructionCopiedAt !== null && metrics) {
+                const type = 'month_end_referral';
+                const { count } = await supabase.from('notification_logs').select('*', { count: 'exact' }).eq('user_id', u.id).eq('notification_type', type).eq('month_year', currentMonthYearStr);
+
+                if (count === 0) {
+                    let msg = `O mês está fechando, *${u.full_name}*! 🎉 Parabéns, você engajou sua empresa nesse mês e calculamos uma economia de impostos na casa dos R$ ${metrics.valorEconomia} com a Fatorr!\n\n`;
+                    msg += `Lembre-se dar uma última espiada no seu Histórico Fatorr pra garantir que o painel tá espelhando o que suas Notas Fiscais reais deram no final das contas.\n\n`;
+                    msg += `Conhece outro PJ que tá perdendo dinheiro pagando imposto caro pro Governo? Faz a boa, manda o link pra ele economizar também: https://fatorr.app/ 🚀`;
+
                     const success = await sendWhatsAppMessage(u.whatsapp, msg);
                     if (success) {
                         await logNotification(u.id, type, currentMonthYearStr);

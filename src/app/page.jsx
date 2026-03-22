@@ -36,29 +36,34 @@ export default function App() {
   const [savings, setSavings] = useState({
     monthly: 0,
     annual: 0,
-    currentTax: 0,
-    optimizedTax: 0,
-    targetPayroll: 0
+    achievedFatorR: false,
+    factorRPercentage: 0
   });
 
   useEffect(() => {
-    // Anexo V: 15.5% | Anexo III: 6%
+    const factorR = revenue > 0 ? (payroll / revenue) : 0;
+    const isOptimal = factorR >= 0.28;
+
     const taxV = revenue * 0.155;
     const taxIII = revenue * 0.06;
 
-    // Meta de 29% (1% de margem sobre os 28% legais)
-    const targetPayroll = revenue * 0.29;
-    const additionalPayrollNeeded = Math.max(0, targetPayroll - payroll);
+    let netSavings = 0;
 
-    // Custos de INSS/FGTS estimados em 27.5% sobre o excedente
-    const payrollTaxCost = additionalPayrollNeeded * 0.275;
+    if (isOptimal) {
+      // Visão simplificada de Marketing solicitada: Moatrando a real diferença entre Anexo V e Anexo III + INSS ideal.
+      // Fixamos o INSS na alíquota ideal de 28% para garantir que a economia líquida NÂO diminua caso ele arraste o slider além do necessário.
+      const idealPayroll = revenue * 0.28;
+      const idealInssCost = idealPayroll * 0.11;
+      
+      const currentTaxes = taxIII + idealInssCost;
+      netSavings = taxV - currentTaxes;
+    }
 
     setSavings({
-      monthly: Math.max(0, taxV - (taxIII + payrollTaxCost)),
-      annual: Math.max(0, taxV - (taxIII + payrollTaxCost)) * 12,
-      currentTax: taxV,
-      optimizedTax: taxIII + payrollTaxCost,
-      targetPayroll: targetPayroll
+      monthly: Math.max(0, netSavings),
+      annual: Math.max(0, netSavings) * 12,
+      achievedFatorR: isOptimal,
+      factorRPercentage: factorR * 100
     });
   }, [revenue, payroll]);
 
@@ -83,9 +88,45 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-emerald-500/30">
+      
+      {/* Estilos CSS Nativos Leves para a Aurora Boreal de Fundo */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 15s infinite alternate;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}} />
 
-      {/* Navegação */}
-      <nav className="sticky top-6 z-50 max-w-5xl mx-auto px-6">
+      {/* Wrapping the Nav and Hero inside the Mesh Gradient */}
+      <div className="relative w-full overflow-hidden mb-12">
+        {/* Camada das Bolhas Animadas Flutuantes (Gradient Mesh) */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[70%] rounded-full bg-emerald-200/50 mix-blend-multiply filter blur-[120px] animate-blob"></div>
+          <div className="absolute top-[20%] right-[-10%] w-[40%] h-[60%] rounded-full bg-cyan-200/50 mix-blend-multiply filter blur-[120px] animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-teal-100/60 mix-blend-multiply filter blur-[120px] animate-blob animation-delay-4000"></div>
+          
+          {/* Subtle Grid Pattern Overlay opcional para sensação Tech */}
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNlNGRlNGQiLz48L3N2Zz4=')] opacity-20"></div>
+          
+          {/* Fade Final suave para a cor nativa da Calculadora */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#f8fafc] to-transparent"></div>
+        </div>
+
+        {/* Content layer */}
+        <div className="relative z-10 pt-6">
+          {/* Navegação */}
+          <nav className="sticky top-6 z-50 max-w-5xl mx-auto px-6">
         <div className="bg-white/80 backdrop-blur-xl border border-slate-200 rounded-full px-6 py-3 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <div className="bg-emerald-500 w-8 h-8 rounded-lg flex items-center justify-center rotate-3">
@@ -119,12 +160,15 @@ export default function App() {
         <div className="flex flex-col items-center gap-6">
           <a
             href="#simulador"
-            className="group bg-emerald-500 hover:bg-emerald-400 text-white font-black px-10 py-5 rounded-2xl text-xl flex items-center gap-3 transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 cursor-pointer"
+            className="group bg-slate-900 hover:bg-slate-800 text-white font-black px-10 py-5 rounded-2xl text-xl flex items-center gap-3 transition-all shadow-2xl hover:-translate-y-1 active:translate-y-0 cursor-pointer"
           >
             Simular Minha Economia <ArrowRight className="group-hover:translate-x-1 transition-transform" />
           </a>
         </div>
       </header>
+      
+        </div> {/* Fim do Content layer */}
+      </div> {/* Fim do Wrapper do Mesh Gradient */}
 
       {/* Como Funciona */}
       <section id="como-funciona" className="px-6 py-32 max-w-6xl mx-auto">
@@ -140,10 +184,10 @@ export default function App() {
       </section>
 
       {/* Simulador Otimizado */}
-      <section id="simulador" className="px-6 py-24 bg-slate-100 rounded-[60px] mx-4">
+      <section id="simulador" className="px-6 py-24 bg-slate-100 rounded-[60px] mx-4 duration-500 transition-colors">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-16 items-center">
           <div className="flex-1 space-y-12">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">Calcule sua Economia real <br />com Fator R otimizado.</h2>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">Calcule sua Economia real <br />arrastando os controles.</h2>
 
             <div className="space-y-10">
               <div className="space-y-4">
@@ -154,50 +198,71 @@ export default function App() {
                 <input
                   type="range" min="5000" max="50000" step="500" value={revenue}
                   onChange={(e) => setRevenue(Number(e.target.value))}
-                  className="w-full h-3 bg-white rounded-full appearance-none cursor-pointer accent-emerald-500"
+                  className="w-full h-3 bg-white rounded-full appearance-none cursor-pointer accent-emerald-500 touch-manipulation"
                 />
               </div>
 
               <div className="space-y-4">
-                <div className="flex justify-between font-bold text-slate-400 uppercase text-xs tracking-widest">
-                  <span>Pró-labore Atual</span>
-                  <span className="text-slate-900 font-black">R$ {payroll.toLocaleString()}</span>
+                <div className="flex justify-between font-bold text-slate-400 uppercase text-xs tracking-widest items-center">
+                  <span>Sua Projeção de Pró-labore</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded text-[10px] ${savings.achievedFatorR ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-500'}`}>
+                      Fator R: {savings.factorRPercentage.toFixed(1)}%
+                    </span>
+                    <span className="text-slate-900 font-black text-lg">R$ {payroll.toLocaleString()}</span>
+                  </div>
                 </div>
                 <input
                   type="range" min="0" max={revenue * 0.5} step="100" value={payroll}
                   onChange={(e) => setPayroll(Number(e.target.value))}
-                  className="w-full h-3 bg-white rounded-full appearance-none cursor-pointer accent-emerald-500"
+                  className="w-full h-3 bg-slate-300 rounded-full appearance-none cursor-pointer accent-indigo-500 touch-manipulation"
                 />
               </div>
             </div>
 
             <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm flex gap-4">
-              <Info className="text-emerald-500 shrink-0" size={20} />
+              <Info className="text-indigo-500 shrink-0" size={20} />
               <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                <b>Estratégia Meta 29%:</b> Recomendamos 1% acima do limite legal para protegê-lo contra oscilações de faturamento. O cálculo já desconta o custo extra de INSS.
+                <b>A mágica acontece nos 28%:</b> Deslize a barra do Pró-labore até atingir o seu ponto ótimo de Fator R e veja a caixa de economia brilhar.
               </p>
             </div>
           </div>
 
-          {/* Resultado Navy */}
-          <div className="w-full md:w-[450px] bg-[#020617] rounded-[40px] p-10 text-white shadow-3xl">
-            <div className="flex items-center justify-between mb-10 group relative">
-              <h3 className="text-emerald-500 font-black uppercase tracking-widest text-xs">Eficiência de Caixa</h3>
-              <div className="cursor-help">
-                <Info size={16} className="text-slate-500 hover:text-emerald-500 transition-colors" />
-                <div className="absolute right-0 top-6 w-64 bg-slate-800 text-xs text-slate-300 p-4 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 pointer-events-none text-left leading-relaxed">
-                  A economia é calculada evitando a perda de faturamento caindo no teto abusivo de <strong className="text-emerald-400">15,5% de imposto (Anexo V)</strong> garantindo matematicamente os <strong className="text-emerald-400">6% de imposto (Anexo III)</strong> através de planejamento inteligente usando o Fator-R em 29%.
+          {/* Resultado Otimizado Interactive */}
+          <div className={`w-full md:w-[450px] rounded-[40px] p-10 text-white shadow-3xl transition-colors duration-700 relative overflow-hidden ${savings.achievedFatorR ? 'bg-emerald-500' : 'bg-slate-900'}`}>
+            <div className="absolute top-0 right-0 -mr-6 -mt-6 opacity-10">
+                <Sparkles size={160} className={savings.achievedFatorR ? 'animate-pulse' : 'hidden'} />
+            </div>
+
+            <div className="flex items-center justify-between mb-10 group relative z-50">
+              <h3 className={`${savings.achievedFatorR ? 'text-emerald-100' : 'text-slate-400'} font-black uppercase tracking-widest text-xs transition-colors`}>
+                Eficiência de Caixa
+              </h3>
+              <div className="cursor-help relative">
+                <Info size={16} className={`${savings.achievedFatorR ? 'text-white/50 hover:text-white' : 'text-slate-500 hover:text-slate-400'} transition-colors`} />
+                
+                <div className="absolute right-0 top-6 w-72 bg-slate-900 border border-slate-700 text-xs text-slate-300 p-4 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none text-left leading-relaxed">
+                  A economia é calculada evitando a perda de faturamento caindo no teto abusivo de <strong className="text-emerald-400">15,5% de imposto (Anexo V)</strong> garantindo matematicamente os <strong className="text-emerald-400">6% de imposto (Anexo III)</strong> através de planejamento inteligente do próprio Pró-labore legal.
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8 text-center">
-              <p className="text-slate-400 text-[10px] font-black uppercase mb-2">Economia Mensal Líquida</p>
-              <p className="text-6xl font-black text-white tracking-tighter">R$ {savings.monthly.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
-              <p className="text-emerald-400 text-xs font-bold mt-4 uppercase tracking-widest">R$ {savings.annual.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ao ano</p>
+            <div className="bg-white/10 border border-white/20 rounded-3xl p-8 mb-8 text-center backdrop-blur-md z-10 relative">
+              <p className="text-white/80 text-[10px] font-black uppercase mb-2">Economia Mensal Líquida</p>
+              
+              <p className={`text-6xl font-black tracking-tighter transition-all duration-300 ${savings.achievedFatorR ? 'text-white scale-110 drop-shadow-md' : 'text-slate-500'}`}>
+                R$ {savings.monthly.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+              </p>
+              
+              {savings.achievedFatorR ? (
+                <p className="text-emerald-100 text-xs font-bold mt-6 uppercase tracking-widest">R$ {savings.annual.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ao ano recuperados</p>
+              ) : (
+                <p className="text-rose-400 text-xs font-bold mt-6 animate-pulse uppercase tracking-widest">⚠️ Arraste para o Fator R ideal</p>
+              )}
             </div>
-            <a href="#precos" className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black py-5 rounded-2xl transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
-              Garantir esta economia <ChevronRight size={18} />
+
+            <a href="#precos" className={`w-full text-white font-black py-5 rounded-2xl transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2 cursor-pointer relative z-10 ${savings.achievedFatorR ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-slate-800 hover:bg-slate-700'}`}>
+              {savings.achievedFatorR ? 'Garantir esta economia' : 'Libere a Economia'} <ChevronRight size={18} />
             </a>
           </div>
         </div>
@@ -261,15 +326,59 @@ export default function App() {
       {/* FAQ Section */}
       <FAQSection />
 
-      {/* Footer Minimalista */}
-      <footer className="px-6 py-20 border-t border-slate-100 flex flex-col items-center gap-8 bg-white">
-        <div className="flex items-center gap-3 text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]"><Lock size={14} /> Dados Protegidos por SSL & LGPD</div>
-        <div className="flex flex-wrap justify-center gap-12 opacity-30 grayscale pointer-events-none">
-          <span className="font-black text-xl italic tracking-tighter">STRIPE</span>
-          <span className="font-black text-xl italic tracking-tighter">SUPABASE</span>
-          <span className="font-black text-xl italic tracking-tighter">AWS</span>
+      {/* Footer SEO & Minimalista */}
+      <footer className="px-6 py-20 border-t border-slate-100 bg-white">
+        <div className="max-w-6xl mx-auto flex flex-col items-center space-y-16">
+          <div className="flex items-center gap-3 text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">
+            <Lock size={14} /> Dados Protegidos por SSL & LGPD
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-12 opacity-30 grayscale pointer-events-none mb-4">
+            <span className="font-black text-xl italic tracking-tighter">STRIPE</span>
+            <span className="font-black text-xl italic tracking-tighter">SUPABASE</span>
+            <span className="font-black text-xl italic tracking-tighter">AWS</span>
+          </div>
+
+          <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-8 text-center md:text-left pt-12 border-t border-slate-100 mt-8">
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Profissões</h4>
+              <nav className="flex flex-col space-y-3">
+                <Link href="/imposto-psicologo" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Psicólogos</Link>
+                <Link href="/imposto-medico-pj" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Médicos PJ</Link>
+                <Link href="/imposto-dentista" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Dentistas</Link>
+                <Link href="/imposto-programador-pj" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Programadores (TI)</Link>
+              </nav>
+            </div>
+            
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Soluções Fiscais</h4>
+              <nav className="flex flex-col space-y-3">
+                <Link href="/anexo-iii-ou-v" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Anexo III vs Anexo V</Link>
+                <Link href="/pagar-menos-imposto-simples" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Reduzir impostos (Legal)</Link>
+              </nav>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Guias Oficiais</h4>
+              <nav className="flex flex-col space-y-3">
+                <Link href="/calcular-fator-r" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Guia: Como calcular Fator R</Link>
+                <Link href="/pro-labore-fator-r" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Pró-labore de 28% no Simples</Link>
+              </nav>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Plataforma Fatorr</h4>
+              <nav className="flex flex-col space-y-3">
+                <Link href="/login" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Login de Pessoas Jurídicas</Link>
+                <a href="#simulador" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors">Simulador de Fator R Grátis</a>
+              </nav>
+            </div>
+          </div>
+
+          <div className="text-xs text-slate-400 font-bold uppercase tracking-widest pt-8 border-t border-slate-50 w-full text-center">
+            © 2026 Fatorr.app - Solução Oficial para Profissionais do Simples Nacional. Todos os direitos reservados.
+          </div>
         </div>
-        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest pt-8 border-t border-slate-50 w-full text-center">© 2024 FatorR SaaS. Todos os direitos reservados.</div>
       </footer>
     </div>
   );
