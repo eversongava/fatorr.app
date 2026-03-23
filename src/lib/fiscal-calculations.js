@@ -98,6 +98,11 @@ export function calculateFiscalStrategy(history, isNewCompany = false) {
         requiredProLabore = MINIMUM_WAGE;
     }
 
+    // Regra Administrativa: O Pró-labore sugerido não pode ultrapassar o teto do faturamento do mês vigente
+    if (requiredProLabore > currentRevenue) {
+        requiredProLabore = currentRevenue;
+    }
+
     const projectedActualPayrollSum = sumPastPayroll + requiredProLabore;
 
     let projectedFolha12 = 0;

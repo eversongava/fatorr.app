@@ -1,13 +1,11 @@
+// @ts-ignore: Deno runtime URL import
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// @ts-ignore: Deno runtime URL import
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// @ts-ignore
-const ZAPI_INSTANCE_URL = Deno.env.get('ZAPI_INSTANCE_URL') || '';
-// @ts-ignore
-const ZAPI_CLIENT_ID = Deno.env.get('ZAPI_CLIENT_ID') || '';
-// @ts-ignore
+// @ts-ignore: Deno is available in Edge Runtime
 const DB_URL = Deno.env.get('DB_URL') || '';
-// @ts-ignore
+// @ts-ignore: Deno is available in Edge Runtime
 const DB_SERVICE_ROLE_KEY = Deno.env.get('DB_SERVICE_ROLE_KEY') || '';
 
 // Configuração do Supabase Client com Service Role (Bypass RLS)
@@ -67,7 +65,7 @@ async function logNotification(userId: string, type: string, monthYear: string |
 }
 
 // Helper to calculate Fator R metrics with Motor Proporcional
-function calculateMetricsForNotifications(fiscalHistory: any[], isNewCompany = false) {
+function calculateMetricsForNotifications(fiscalHistory: Record<string, unknown>[], isNewCompany = false) {
     const MINIMUM_WAGE = 1412.00;
     const TARGET_FACTOR = 0.29;
 
@@ -112,6 +110,11 @@ function calculateMetricsForNotifications(fiscalHistory: any[], isNewCompany = f
         requiredProLabore = MINIMUM_WAGE;
     }
 
+    // Regra Administrativa: O Pró-labore não pode ultrapassar o teto do faturamento do mês vigente
+    if (requiredProLabore > currentRevenue) {
+        requiredProLabore = currentRevenue;
+    }
+
     const projectedTotalPayroll = pastPayroll + requiredProLabore;
     const maxTotalRevenue = projectedTotalPayroll / 0.28;
 
@@ -133,7 +136,7 @@ function calculateMetricsForNotifications(fiscalHistory: any[], isNewCompany = f
     };
 }
 
-serve(async (req: any) => {
+serve(async (_req: Request) => {
     try {
         const today = new Date();
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -293,9 +296,9 @@ serve(async (req: any) => {
             headers: { 'Content-Type': 'application/json' },
             status: 200,
         })
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("Erro na Edge Function ZAPI:", err);
-        return new Response(JSON.stringify({ error: err.message }), {
+        return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
             headers: { 'Content-Type': 'application/json' },
             status: 500,
         })
