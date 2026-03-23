@@ -31,11 +31,12 @@ function AuthPage() {
         setLoading(true);
         setErrorMsg('');
 
-        // Chamada real ao Supabase para Magic Link
+        // Chamada real ao Supabase para PKCE Magic Link
         const { error } = await supabase.auth.signInWithOtp({
             email,
             options: {
-                emailRedirectTo: `${window.location.origin}/cockpit`,
+                // Crucial para que o Edge Middleware e SSR reconheçam a sessão via trocas de código
+                emailRedirectTo: `${window.location.origin}/auth/callback?next=/cockpit`,
             }
         });
 
