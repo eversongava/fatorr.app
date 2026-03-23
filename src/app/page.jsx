@@ -178,7 +178,7 @@ export default function App() {
         </div>
         <div className="grid md:grid-cols-3 gap-12">
           <StepCard number="01" title="Carga de Histórico" description="Conectamos aos seus últimos 12 meses para calcular sua média móvel fiscal com precisão." />
-          <StepCard number="02" title="Alerta Preditivo" description="No dia 20, sugerimos o Pró-labore ideal baseado no faturamento que você ainda vai emitir." />
+          <StepCard number="02" title="Alerta Preditivo" description="A partir do dia 20 enviamos alertas no WhatsApp com o seu pró-labore sugerido para garantir a economia do mês." />
           <StepCard number="03" title="Instrução Pronta" description="Envie a informação do pro-labore otimizado ao seu contador. Garanta benefício fiscal todo mês." />
         </div>
       </section>
