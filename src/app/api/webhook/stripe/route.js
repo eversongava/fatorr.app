@@ -2,22 +2,20 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// Inicializa o Stripe de forma atualizada
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16',
-});
-
-// Inicializa o Supabase com Service Role Key para ignorar RLS e atualizar a tabela de Profiles
-// CRÍTICO: RLS policies não permitem alterações pelo client, o webhook DEVE usar essa key
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 // Habilita a leitura em RAW text para a signature validation do Stripe no App Router (Next.js 14+)
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
+    // Inicializa clientes dentro do handler dinâmico para evitar crache no BUILD da Vercel
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: '2023-10-16',
+    });
+
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     const bodyText = await req.text(); // Obrigatório ler como texto puro
     const signature = req.headers.get('stripe-signature');
 
