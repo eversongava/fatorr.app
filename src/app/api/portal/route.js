@@ -1,28 +1,46 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2023-10-16',
 });
 
-// Força a leitura de cookies como rota dinâmica
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
     try {
         const cookieStore = cookies();
-        const supabase = createServerComponentClient({ cookies: () => cookieStore });
+        
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            {
+                cookies: {
+                    getAll() {
+                        return cookieStore.getAll()
+                    },
+                    setAll(cookiesToSet) {
+                        try {
+                            cookiesToSet.forEach(({ name, value, options }) =>
+                                cookieStore.set(name, value, options)
+                            )
+                        } catch {
+                            // The `setAll` method was called from a Server Component.
+                            // This can be ignored if you have middleware refreshing user sessions.
+                        }
+                    },
+                },
+            }
+        );
 
-        // Identifica o usuário logado de forma segura na API
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
             return new NextResponse('Não Autorizado', { status: 401 });
         }
 
-        // Puxa o ID do Stripe via banco
         const { data: profile } = await supabase
             .from('profiles')
             .select('stripe_customer_id')
@@ -33,12 +51,11 @@ export async function POST(req) {
             return new NextResponse('Cliente Stripe não encontrado. Acesse o suporte.', { status: 404 });
         }
 
-        // Gera a sessão de gerenciamento no Stripe
         const origin = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
         
         const session = await stripe.billingPortal.sessions.create({
             customer: profile.stripe_customer_id,
-            return_url: `${origin}/cockpit`, // Volta tranquilamente pro dashboard amigável
+            return_url: `${origin}/cockpit`,
         });
 
         return NextResponse.json({ url: session.url });
