@@ -312,22 +312,39 @@ export default function CockpitPage() {
                                 </div>
                             </div>
 
-                            {/* Indicador de Confiança */}
-                            <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 mb-8 flex items-start gap-4">
-                                <Info className="text-slate-400 shrink-0 mt-1" />
-                                <div>
-                                    <h3 className="text-sm font-black text-slate-900 mb-1">Gordura Financeira (29% Meta)</h3>
-                                    <p className="text-sm font-medium text-slate-600 leading-relaxed mb-3">
-                                        O pró-labore gerado contempla o fator da lei 28% e nós adicionamos +1% de gordura livre de imposto para lhe dar flexibilidade.
-                                    </p>
-                                    <div className="bg-white p-4 rounded-2xl border border-slate-100">
-                                        <p className="text-sm font-medium text-slate-800">
-                                            O faturamento deste mês ainda pode subir mais <strong className="text-xl font-black block mt-1 text-emerald-600">R$ {results.revenueTolerance?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                                            além da previsão informada sem que você corra o risco de ir para o Anexo V (15,5%).
+                            {/* Indicador de Confiança ou Alerta de Fator R Baixo */}
+                            {results.projectedFactorR > 0 && results.projectedFactorR < 28 ? (
+                                <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 mb-8 flex items-start gap-4 shadow-sm">
+                                    <AlertCircle className="text-amber-500 shrink-0 mt-1" />
+                                    <div>
+                                        <h3 className="text-sm font-black text-amber-900 mb-1">Atenção: Meta do Fator R não atingida</h3>
+                                        <p className="text-sm font-medium text-amber-800 leading-relaxed mb-3">
+                                            O seu faturamento atual não é suficiente para recuperar a média e atingir os 28% da lei neste mês.
                                         </p>
+                                        <div className="bg-white/60 p-4 rounded-2xl border border-amber-100">
+                                            <p className="text-sm font-medium text-amber-900 leading-relaxed">
+                                                O Fatorr limitou sua instrução de Pró-labore ao teto do faturamento. Retire este valor máximo para aumentar sua média de 12 meses (RBT12) e facilitar o atingimento da meta de 6% de imposto no próximo mês!
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 mb-8 flex items-start gap-4">
+                                    <Info className="text-slate-400 shrink-0 mt-1" />
+                                    <div>
+                                        <h3 className="text-sm font-black text-slate-900 mb-1">Gordura Financeira (29% Meta)</h3>
+                                        <p className="text-sm font-medium text-slate-600 leading-relaxed mb-3">
+                                            O pró-labore gerado contempla o fator da lei 28% e nós adicionamos +1% de gordura livre de imposto para lhe dar flexibilidade.
+                                        </p>
+                                        <div className="bg-white p-4 rounded-2xl border border-slate-100">
+                                            <p className="text-sm font-medium text-slate-800">
+                                                O faturamento deste mês ainda pode subir mais <strong className="text-xl font-black block mt-1 text-emerald-600">R$ {results.revenueTolerance?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                                além da previsão informada sem que você corra o risco de ir para o Anexo V (15,5%).
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Instrução Contador */}
                             <div className="bg-slate-900 rounded-[40px] p-8">
