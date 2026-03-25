@@ -14,7 +14,6 @@ const geistMono = Geist_Mono({
 
 import { Toaster } from 'sonner';
 
-import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Fatorr | Otimização Fiscal para Prestadores",
@@ -28,34 +27,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        {/* Google Ads Tag (Direto no Head para robôs do Google visualizarem fácil) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-980294217"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'AW-980294217');
+              ${process.env.NEXT_PUBLIC_GA_ID ? `gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');` : ''}
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* Google Analytics Global Tag (Injeção via Env Var) */}
-        {(process.env.NEXT_PUBLIC_GA_ID || true) && (
-          <>
-            <Script
-              strategy="afterInteractive"
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID || 'AW-980294217'}`}
-            />
-            <Script
-              id="google-analytics"
-              strategy="afterInteractive"
-              dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  gtag('js', new Date());
-                  ${process.env.NEXT_PUBLIC_GA_ID ? `gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}', {
-                    page_path: window.location.pathname,
-                  });` : ''}
-                  gtag('config', 'AW-980294217');
-                `,
-              }}
-            />
-          </>
-        )}
-        
+      >        
         {children}
         <Toaster position="bottom-right" richColors />
       </body>
