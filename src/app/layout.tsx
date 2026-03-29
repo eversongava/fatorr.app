@@ -32,12 +32,11 @@ export default function RootLayout({
         <script async src="https://www.googletagmanager.com/gtag/js?id=AW-980294217"></script>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
+             __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
               gtag('config', 'AW-980294217');
-              ${process.env.NEXT_PUBLIC_GA_ID ? `gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');` : ''}
             `,
           }}
         />
